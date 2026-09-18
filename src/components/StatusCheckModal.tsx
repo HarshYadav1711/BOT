@@ -14,7 +14,7 @@ import {
   MessageCircle,
   Crown
 } from 'lucide-react';
-import { storageService } from '../services/storageService';
+import { checkRegistrationStatus } from '../services/apiService';
 import type { Applicant } from '../types/registration';
 
 interface StatusCheckModalProps {
@@ -34,12 +34,16 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
-    const applicant = storageService.getApplicantByRollOrId(query);
-    setResult(applicant || null);
+    try {
+      const applicant = await checkRegistrationStatus(query.trim());
+      setResult(applicant);
+    } catch {
+      setResult(null);
+    }
     setHasSearched(true);
   };
 

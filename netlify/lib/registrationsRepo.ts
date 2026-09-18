@@ -265,6 +265,23 @@ export async function getRegistrationByRollNumber(
   return row ? mapRow(row) : null;
 }
 
+/**
+ * Public status lookup: application ID (case-insensitive) OR university roll number.
+ * Mirrors the previous client-side getApplicantByRollOrId behavior.
+ */
+export async function getRegistrationByRollOrId(
+  identifier: string,
+  recruitmentYear: number = CURRENT_RECRUITMENT_YEAR
+): Promise<RegistrationRecord | null> {
+  const trimmed = identifier.trim();
+  if (!trimmed) return null;
+
+  const byId = await getRegistrationByApplicationId(trimmed);
+  if (byId) return byId;
+
+  return getRegistrationByRollNumber(trimmed, recruitmentYear);
+}
+
 export async function listRegistrations(options?: {
   recruitmentYear?: number;
   status?: ApplicationStatus;

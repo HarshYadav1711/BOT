@@ -217,3 +217,24 @@ export function requireNonEmptyString(value: unknown, field: string): string {
   }
   return value.trim();
 }
+
+/**
+ * Validate a public status-check payload.
+ * Accepts application ID or university roll number as `identifier`.
+ */
+export function validateStatusIdentifierInput(raw: unknown): string {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new AppError('INVALID_INPUT', 'Invalid status lookup payload.', 400);
+  }
+
+  const body = raw as Record<string, unknown>;
+  const identifier = asTrimmedString(body.identifier);
+
+  if (!identifier) {
+    throw new AppError('INVALID_INPUT', 'Application ID or university roll number is required.', 400, {
+      identifier: 'Required.',
+    });
+  }
+
+  return identifier;
+}

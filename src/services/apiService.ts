@@ -227,6 +227,50 @@ export async function createRegistration(
   return parseRegistrationPayload(payload, response);
 }
 
+/**
+ * Public status lookup by application ID or university roll number.
+ * Returns null when no matching registration exists (same as prior localStorage miss).
+ */
+export async function checkRegistrationStatus(
+  identifier: string
+): Promise<Applicant | null> {
+  const { response, payload } = await apiFetch('/.netlify/functions/status', {
+    method: 'POST',
+    body: JSON.stringify({ identifier }),
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throwFromErrorPayload(
+      response,
+      payload,
+      'Unable to check application status right now. Please try again.'
+    );
+  }
+
+  if (!isRecord(payload) || payload.ok !== true || !isRecord(payload.registration)) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Unexpected server response. Please try again.',
+      response.status
+    );
+  }
+
+  const reg = payload.registration as ServerRegistration;
+  if (!reg.applicationId && !reg.id) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Unexpected server response. Please try again.',
+      response.status
+    );
+  }
+
+  return mapRegistrationToApplicant(reg);
+}
+
 export async function adminLogin(
   username: string,
   password: string
