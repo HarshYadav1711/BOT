@@ -16,7 +16,7 @@ import type {
   Applicant 
 } from '../types/registration';
 import { DOMAINS_DATA, BRANCH_LIST } from '../data/culturalCellData';
-import { DuplicateRegistrationError, storageService } from '../services/storageService';
+import { ApiError, createRegistration } from '../services/apiService';
 
 interface RegistrationFormProps {
   selectedYear: YearType;
@@ -105,14 +105,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!validate()) return;
 
     setIsSubmitting(true);
 
     try {
-      const applicant = storageService.saveRegistration({
+      const applicant = await createRegistration({
         fullName: fullName.trim(),
         universityRollNo: universityRollNo.trim().toUpperCase(),
         gender,
@@ -127,10 +128,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         portfolioUrl: portfolioUrl.trim() || undefined,
         motivation: motivation.trim(),
         wasInPreviousEnigma: selectedYear === '3rd Year' ? wasInPreviousEnigma : false,
-        previousRoleDetails: selectedYear === '3rd Year' && wasInPreviousEnigma ? previousRoleDetails.trim() : undefined,
+        previousRoleDetails:
+          selectedYear === '3rd Year' && wasInPreviousEnigma
+            ? previousRoleDetails.trim()
+            : undefined,
       });
 
-      // Clear form
+      // Clear form only after successful server registration
       setFullName('');
       setUniversityRollNo('');
       setWhatsappNumber('');
@@ -144,12 +148,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
       onRegistrationSuccess(applicant);
     } catch (err) {
-      if (err instanceof DuplicateRegistrationError) {
-        setErrors({ universityRollNo: err.message });
+      if (err instanceof ApiError) {
+        if (err.code === 'DUPLICATE_REGISTRATION') {
+          setErrors({
+            universityRollNo:
+              'A registration already exists for this university roll number.',
+          });
+          return;
+        }
+
+        if (err.code === 'INVALID_INPUT' && err.fields && Object.keys(err.fields).length > 0) {
+          setErrors(err.fields);
+          return;
+        }
+
+        alert(
+          err.message ||
+            'Unable to submit your registration right now. Please try again.'
+        );
         return;
       }
+
       console.error(err);
-      alert('An error occurred while saving your registration. Please try again.');
+      alert('Unable to submit your registration right now. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

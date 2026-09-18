@@ -72,7 +72,7 @@ function toPublicRegistration(record: RegistrationRecord) {
  * POST /.netlify/functions/register
  *
  * Public registration endpoint. Validates input, persists to PostgreSQL,
- * and returns the canonical application ID. Frontend is not wired yet.
+ * and returns the canonical application ID.
  */
 export const handler: Handler = async (event): Promise<HandlerResponse> => {
   if (event.httpMethod !== 'POST') {
