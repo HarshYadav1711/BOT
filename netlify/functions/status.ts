@@ -34,7 +34,7 @@ function toPublicStatusRegistration(record: RegistrationRecord) {
  * Public applicant status lookup by application ID or university roll number.
  * No admin authentication required.
  *
- * Body: { "identifier": "ENIGMA-2025-V204" | "2300100100084" }
+ * Body: { "identifier": "ENIGMA-2026-V204" | "2300100100084" }
  */
 export const handler: Handler = async (event): Promise<HandlerResponse> => {
   if (event.httpMethod !== 'POST') {

@@ -71,7 +71,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6 text-left">
           <p className="text-xs sm:text-sm text-gray-300">
-            Enter your <strong className="text-white">University Roll Number</strong> or <strong className="text-white">Application ID</strong> (e.g., <code>ENIGMA-2025-V1042</code>) to check your current recruitment review status.
+            Enter your <strong className="text-white">University Roll Number</strong> or <strong className="text-white">Application ID</strong> (e.g., <code>ENIGMA-2026-V1042</code>) to check your current recruitment review status.
           </p>
 
           {/* Search Form */}
@@ -80,7 +80,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. 2300100100084 or ENIGMA-2025-V204"
+              placeholder="e.g. 2300100100084 or ENIGMA-2026-V204"
               className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400 transition-colors font-mono"
               autoFocus
             />

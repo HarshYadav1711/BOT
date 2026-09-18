@@ -45,7 +45,7 @@ Open your web browser (Chrome / Edge) and visit:
 - 2nd years apply for **Volunteer / Junior Coordinator** roles.
 - 3rd years apply for **Domain Head & Leadership** roles.
 - **Previous Enigma Question**: 3rd-year students have a conditional field to state their previous year Enigma contributions.
-- Instant printable candidate pass with unique Application ID (e.g. `ENIGMA-2025-H3011`).
+- Instant printable candidate pass with unique Application ID (e.g. `ENIGMA-2026-H3011`).
 
 ### 2. Application Status Tracker
 - Any applicant can enter their Roll Number or Application ID via **"Check Status"** to view their real-time interview schedule or selection announcement.

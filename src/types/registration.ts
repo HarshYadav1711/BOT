@@ -29,7 +29,7 @@ export interface InterviewDetails {
 }
 
 export interface Applicant {
-  id: string; // e.g., ENIGMA-2025-V104
+  id: string; // e.g., ENIGMA-2026-V104
   fullName: string;
   universityRollNo: string;
   gender: GenderType;

@@ -267,7 +267,8 @@ export async function getRegistrationByRollNumber(
 
 /**
  * Public status lookup: application ID (case-insensitive) OR university roll number.
- * Mirrors the previous client-side getApplicantByRollOrId behavior.
+ * Roll lookups are scoped to the current recruitment year.
+ * Explicit application IDs (including historical ENIGMA-2025-…) still resolve by ID.
  */
 export async function getRegistrationByRollOrId(
   identifier: string,

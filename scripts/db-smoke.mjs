@@ -10,6 +10,8 @@
 import pg from 'pg';
 import { buildPoolConfig, loadEnvFile } from './loadEnv.mjs';
 
+const CURRENT_YEAR = 2026;
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -27,7 +29,9 @@ async function main() {
   const stamp = Date.now();
   const rollA = `SMOKE-TEST-${stamp}-A`;
   const rollB = `SMOKE-TEST-${stamp}-B`;
-  const appId = `ENIGMA-2025-V${String(stamp).slice(-4).padStart(4, '0')}`;
+  const rollCross = `SMOKE-TEST-${stamp}-CROSS`;
+  const appId = `ENIGMA-${CURRENT_YEAR}-V${String(stamp).slice(-4).padStart(4, '0')}`;
+  const appId2025 = `ENIGMA-2025-V${String(stamp).slice(-4).padStart(4, '0')}`;
 
   try {
     // 1) Connectivity (health-equivalent)
@@ -47,6 +51,20 @@ async function main() {
     assert(names.has('schema_migrations'), 'schema_migrations table missing — run npm run db:migrate');
     console.log('ok  tables present');
 
+    // 2b) Default recruitment_year is 2026
+    const def = await client.query(`
+      SELECT column_default
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'registrations'
+        AND column_name = 'recruitment_year'
+    `);
+    assert(
+      String(def.rows[0]?.column_default || '').includes('2026'),
+      'recruitment_year default is not 2026 — run npm run db:migrate'
+    );
+    console.log('ok  recruitment_year default 2026');
+
     // 3) Constraints
     const constraints = await client.query(`
       SELECT conname
@@ -58,7 +76,7 @@ async function main() {
     assert(cons.has('registrations_roll_year_unique'), 'missing roll+year unique');
     console.log('ok  unique constraints');
 
-    // 4) Insert
+    // 4) Insert current-cycle row
     await client.query(
       `
       INSERT INTO registrations (
@@ -68,8 +86,8 @@ async function main() {
         primary_domain, role_applied, past_experience, motivation,
         was_in_previous_enigma, status
       ) VALUES (
-        $1, 2025,
-        $2, $3,
+        $1, $2,
+        $3, $4,
         'Smoke Test User', 'Male', '2nd Year',
         'Computer Science & Engineering (CSE)',
         '9876543210', 'smoke@example.com',
@@ -78,11 +96,11 @@ async function main() {
         FALSE, 'pending'
       )
       `,
-      [appId, rollA, rollA]
+      [appId, CURRENT_YEAR, rollA, rollA]
     );
     console.log('ok  insert');
 
-    // 5) Duplicate roll protection
+    // 5) Duplicate roll in same year blocked
     let duplicateBlocked = false;
     try {
       await client.query(
@@ -94,8 +112,8 @@ async function main() {
           primary_domain, role_applied, past_experience, motivation,
           was_in_previous_enigma, status
         ) VALUES (
-          $1, 2025,
-          $2, $3,
+          $1, $2,
+          $3, $4,
           'Smoke Dup', 'Female', '2nd Year',
           'Information Technology (IT)',
           '9123456789', 'smoke2@example.com',
@@ -103,13 +121,65 @@ async function main() {
           'x', 'y', FALSE, 'pending'
         )
         `,
-        [`ENIGMA-2025-V9999`, rollA.toLowerCase(), rollA]
+        [`ENIGMA-${CURRENT_YEAR}-V9999`, CURRENT_YEAR, rollA.toLowerCase(), rollA]
       );
     } catch (err) {
       duplicateBlocked = err && err.code === '23505';
     }
     assert(duplicateBlocked, 'duplicate roll was not rejected by DB');
     console.log('ok  duplicate roll blocked');
+
+    // 5b) Same roll allowed across years (2025 + 2026)
+    await client.query(
+      `
+      INSERT INTO registrations (
+        application_id, recruitment_year,
+        university_roll_no, university_roll_no_normalized,
+        full_name, gender, year, branch, whatsapp_number, email,
+        primary_domain, role_applied, past_experience, motivation,
+        was_in_previous_enigma, status
+      ) VALUES (
+        $1, 2025,
+        $2, $3,
+        'Smoke Prior Year', 'Male', '2nd Year',
+        'Computer Science & Engineering (CSE)',
+        '9876543210', 'smoke.prior@example.com',
+        'Tech & Web Operations', 'Web Operations Assistant',
+        'prior', 'prior', FALSE, 'pending'
+      )
+      `,
+      [appId2025, rollCross, rollCross]
+    );
+    await client.query(
+      `
+      INSERT INTO registrations (
+        application_id, recruitment_year,
+        university_roll_no, university_roll_no_normalized,
+        full_name, gender, year, branch, whatsapp_number, email,
+        primary_domain, role_applied, past_experience, motivation,
+        was_in_previous_enigma, status
+      ) VALUES (
+        $1, $2,
+        $3, $4,
+        'Smoke Current Year', 'Male', '2nd Year',
+        'Computer Science & Engineering (CSE)',
+        '9876543210', 'smoke.current@example.com',
+        'Tech & Web Operations', 'Web Operations Assistant',
+        'current', 'current', FALSE, 'pending'
+      )
+      `,
+      [`ENIGMA-${CURRENT_YEAR}-H${String(stamp).slice(-4).padStart(4, '0')}`, CURRENT_YEAR, rollCross, rollCross]
+    );
+    console.log('ok  cross-year same roll allowed');
+
+    // Confirm prior-year row was not rewritten
+    const prior = await client.query(
+      `SELECT recruitment_year, application_id FROM registrations WHERE application_id = $1`,
+      [appId2025]
+    );
+    assert(prior.rows[0]?.recruitment_year === 2025, '2025 row was rewritten');
+    assert(prior.rows[0]?.application_id === appId2025, '2025 application ID changed');
+    console.log('ok  2025 row unchanged');
 
     // 6) Application ID uniqueness
     let idCollisionBlocked = false;
@@ -123,8 +193,8 @@ async function main() {
           primary_domain, role_applied, past_experience, motivation,
           was_in_previous_enigma, status
         ) VALUES (
-          $1, 2025,
-          $2, $3,
+          $1, $2,
+          $3, $4,
           'Smoke ID Coll', 'Male', '3rd Year',
           'Electronics & Communication (ECE)',
           '9988776655', 'smoke3@example.com',
@@ -132,7 +202,7 @@ async function main() {
           'x', 'y', FALSE, 'pending'
         )
         `,
-        [appId, rollB, rollB]
+        [appId, CURRENT_YEAR, rollB, rollB]
       );
     } catch (err) {
       idCollisionBlocked = err && err.code === '23505';
@@ -142,18 +212,19 @@ async function main() {
 
     // 7) Lookups
     const byApp = await client.query(
-      `SELECT application_id, status FROM registrations WHERE application_id = $1`,
+      `SELECT application_id, status, recruitment_year FROM registrations WHERE application_id = $1`,
       [appId]
     );
     assert(byApp.rows.length === 1, 'lookup by application_id failed');
+    assert(byApp.rows[0]?.recruitment_year === CURRENT_YEAR, 'new row year mismatch');
 
     const byRoll = await client.query(
       `
       SELECT application_id
       FROM registrations
-      WHERE university_roll_no_normalized = $1 AND recruitment_year = 2025
+      WHERE university_roll_no_normalized = $1 AND recruitment_year = $2
       `,
-      [rollA]
+      [rollA, CURRENT_YEAR]
     );
     assert(byRoll.rows.length === 1, 'lookup by roll failed');
     console.log('ok  lookups');
@@ -177,7 +248,7 @@ async function main() {
       UPDATE registrations
       SET
         status = 'interview_scheduled',
-        interview_date = '2025-10-20',
+        interview_date = '2026-10-20',
         interview_time = '11:00 AM',
         interview_venue = 'UCER Auditorium',
         interview_scheduled_at = NOW(),
@@ -189,7 +260,7 @@ async function main() {
     );
     assert(
       interview.rows[0]?.status === 'interview_scheduled' &&
-        interview.rows[0]?.interview_date === '2025-10-20',
+        interview.rows[0]?.interview_date === '2026-10-20',
       'interview update failed'
     );
     console.log('ok  interview update');

@@ -3,7 +3,7 @@
  * Kept local to netlify/ so browser code never imports server modules.
  */
 
-export const CURRENT_RECRUITMENT_YEAR = 2025;
+export const CURRENT_RECRUITMENT_YEAR = 2026;
 
 export const YEAR_TYPES = ['2nd Year', '3rd Year'] as const;
 export type YearType = (typeof YEAR_TYPES)[number];

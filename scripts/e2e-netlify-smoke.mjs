@@ -86,8 +86,35 @@ async function main() {
     const registerBody = await readJson(registerRes);
     assert(registerRes.status === 201 && registerBody?.ok === true, 'register failed');
     applicationId = registerBody.registration?.applicationId;
-    assert(typeof applicationId === 'string' && applicationId.startsWith('ENIGMA-2025-'), 'bad application id');
+    assert(typeof applicationId === 'string' && applicationId.startsWith('ENIGMA-2026-'), 'bad application id');
+    assert(registerBody.registration?.recruitmentYear === 2026, 'recruitmentYear must be 2026');
     console.log('ok  register');
+
+    // 2b) Duplicate same roll in 2026 blocked
+    const dupRes = await fetch(fn('register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        fullName: 'E2E Duplicate Applicant',
+        universityRollNo: roll,
+        gender: 'Female',
+        year: '2nd Year',
+        branch: 'Information Technology (IT)',
+        whatsappNumber: '9123456789',
+        email: `e2e.dup.${stamp}@example.com`,
+        primaryDomain: 'Media & Photography',
+        roleApplied: 'Event Photographer',
+        pastExperience: 'E2E dup past experience',
+        motivation: 'E2E dup motivation for Cultural Cell',
+        wasInPreviousEnigma: false,
+      }),
+    });
+    const dupBody = await readJson(dupRes);
+    assert(
+      dupRes.status === 409 && dupBody?.error?.code === 'DUPLICATE_REGISTRATION',
+      'duplicate 2026 roll must be rejected'
+    );
+    console.log('ok  duplicate 2026 blocked');
 
     // 3) Public status by roll
     const statusRes = await fetch(fn('status'), {
@@ -102,6 +129,16 @@ async function main() {
     assert(statusBody.registration?.adminRemarks === undefined, 'status leaked adminRemarks');
     assert(statusBody.registration?.pastExperience === undefined, 'status leaked pastExperience');
     console.log('ok  status');
+
+    // 3b) Status by application ID
+    const statusIdRes = await fetch(fn('status'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ identifier: applicationId }),
+    });
+    const statusIdBody = await readJson(statusIdRes);
+    assert(statusIdRes.ok && statusIdBody?.registration?.applicationId === applicationId, 'status by ID failed');
+    console.log('ok  status by application ID');
 
     // 4) Admin login → HttpOnly cookie (token must not appear in JSON)
     const loginRes = await fetch(fn('admin-login'), {
