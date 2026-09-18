@@ -223,7 +223,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <a
-                href="https://wa.me/918960194225?text=Hello%20Himanshu,%20I%20have%20a%20query%20regarding%20my%20Enigma%202025%20registration."
+                href={`https://wa.me/918960194225?text=${encodeURIComponent('Hello Himanshu, I have a query regarding my Enigma 2025 registration.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-semibold hover:bg-emerald-500/30 transition-colors"

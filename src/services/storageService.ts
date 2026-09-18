@@ -113,6 +113,37 @@ const INITIAL_SEED_APPLICANTS: Applicant[] = [
   },
 ];
 
+/** Digits-only international WhatsApp phone (prepends 91 for 10-digit Indian numbers). */
+function toWhatsAppPhone(whatsappNumber: string): string {
+  const phone = whatsappNumber.replace(/\D/g, '');
+  return phone.length === 10 ? `91${phone}` : phone;
+}
+
+/** Build a wa.me URL with the message encoded exactly once. */
+function buildWhatsAppUrl(phoneDigits: string, message: string): string {
+  return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
+}
+
+/**
+ * Neutralize spreadsheet formula injection for CSV export only.
+ * Prefixes with ' when the first meaningful character is =, +, -, or @.
+ */
+function sanitizeCsvFormula(value: string): string {
+  const firstMeaningful = value.match(/\S/)?.[0];
+  if (firstMeaningful && '=@+-'.includes(firstMeaningful)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
+/** Quote/escape a CSV cell after formula sanitization. */
+function escapeCsv(val: unknown): string {
+  if (val === undefined || val === null) return '""';
+  const sanitized = sanitizeCsvFormula(String(val));
+  const str = sanitized.replace(/"/g, '""');
+  return `"${str}"`;
+}
+
 export const storageService = {
   getRegistrations(): Applicant[] {
     try {
@@ -237,22 +268,55 @@ export const storageService = {
 
   // WhatsApp generator utilities
   generateWhatsAppInviteLink(applicant: Applicant): string {
-    const phone = applicant.whatsappNumber.replace(/\D/g, '');
-    const intPhone = phone.length === 10 ? `91${phone}` : phone;
+    const intPhone = toWhatsAppPhone(applicant.whatsappNumber);
     const interview = applicant.interviewDetails;
 
-    const message = `🎉 *Cultural Cell UCER — ENIGMA 2025 Interview Shortlist* 🎉%0A%0ADear *${applicant.fullName}*,%0A%0AGreetings from Cultural Cell UCER!%0AYour application for *${applicant.roleApplied}* (${applicant.primaryDomain}) for our annual fest *ENIGMA 2025* has been *SHORTLISTED* for the personal interview round.%0A%0A🗓 *Interview Details:*%0A• Date: ${interview?.date || 'To be announced'}%0A• Time: ${interview?.time || 'To be announced'}%0A• Venue: ${interview?.venue || 'UCER Campus / Auditorium'}%0A• App ID: ${applicant.id}%0A%0APlease arrive 10 minutes prior with your ID card and past portfolio/work samples if applicable.%0A%0ARegards,%0A*Himanshu Mishra (President)*%0ACultural Cell UCER | Enigma 2025%0AContact: 8960194225`;
+    const message = `🎉 *Cultural Cell UCER — ENIGMA 2025 Interview Shortlist* 🎉
 
-    return `https://wa.me/${intPhone}?text=${message}`;
+Dear *${applicant.fullName}*,
+
+Greetings from Cultural Cell UCER!
+Your application for *${applicant.roleApplied}* (${applicant.primaryDomain}) for our annual fest *ENIGMA 2025* has been *SHORTLISTED* for the personal interview round.
+
+🗓 *Interview Details:*
+• Date: ${interview?.date || 'To be announced'}
+• Time: ${interview?.time || 'To be announced'}
+• Venue: ${interview?.venue || 'UCER Campus / Auditorium'}
+• App ID: ${applicant.id}
+
+Please arrive 10 minutes prior with your ID card and past portfolio/work samples if applicable.
+
+Regards,
+*Himanshu Mishra (President)*
+Cultural Cell UCER | Enigma 2025
+Contact: 8960194225`;
+
+    return buildWhatsAppUrl(intPhone, message);
   },
 
   generateWhatsAppSelectionLink(applicant: Applicant): string {
-    const phone = applicant.whatsappNumber.replace(/\D/g, '');
-    const intPhone = phone.length === 10 ? `91${phone}` : phone;
+    const intPhone = toWhatsAppPhone(applicant.whatsappNumber);
 
-    const message = `🌟 *CONGRATULATIONS! YOU ARE SELECTED FOR ENIGMA 2025* 🌟%0A%0ADear *${applicant.fullName}*,%0A%0AWe are thrilled to welcome you to the official organizing team of *Cultural Cell UCER* for *ENIGMA 2025*!%0A%0A✨ *Assigned Role:* ${applicant.roleApplied}%0A📌 *Domain:* ${applicant.primaryDomain}%0A🎫 *Application ID:* ${applicant.id}%0A%0AThe Core Team will be adding you to the official Enigma 2025 WhatsApp workspace soon for orientation and briefing.%0A%0AWelcome to the family! Let's make Enigma 2025 legendary!%0A%0ABest wishes,%0A*Cultural Cell UCER Core Team*%0APresident: Himanshu Mishra (8960194225)%0AInstagram: @enigmafest_25`;
+    const message = `🌟 *CONGRATULATIONS! YOU ARE SELECTED FOR ENIGMA 2025* 🌟
 
-    return `https://wa.me/${intPhone}?text=${message}`;
+Dear *${applicant.fullName}*,
+
+We are thrilled to welcome you to the official organizing team of *Cultural Cell UCER* for *ENIGMA 2025*!
+
+✨ *Assigned Role:* ${applicant.roleApplied}
+📌 *Domain:* ${applicant.primaryDomain}
+🎫 *Application ID:* ${applicant.id}
+
+The Core Team will be adding you to the official Enigma 2025 WhatsApp workspace soon for orientation and briefing.
+
+Welcome to the family! Let's make Enigma 2025 legendary!
+
+Best wishes,
+*Cultural Cell UCER Core Team*
+President: Himanshu Mishra (8960194225)
+Instagram: @enigmafest_25`;
+
+    return buildWhatsAppUrl(intPhone, message);
   },
 
   exportRegistrationsCSV(): void {
@@ -284,12 +348,6 @@ export const storageService = {
       'Admin Remarks',
       'Submitted At',
     ];
-
-    const escapeCsv = (val: unknown) => {
-      if (val === undefined || val === null) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
-    };
 
     const rows = list.map((a) => [
       escapeCsv(a.id),

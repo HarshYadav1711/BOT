@@ -150,7 +150,7 @@ export const CoreTeamSection: React.FC = () => {
                       <span>{member.phone}</span>
                     </a>
                     <a
-                      href={`https://wa.me/91${member.phone}`}
+                      href={`https://wa.me/91${member.phone.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors"

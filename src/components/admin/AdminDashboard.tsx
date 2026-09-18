@@ -637,7 +637,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div>
                   <span className="text-gray-400 block mb-0.5">WhatsApp Contact</span>
                   <a
-                    href={`https://wa.me/91${selectedApplicant.whatsappNumber}`}
+                    href={`https://wa.me/91${selectedApplicant.whatsappNumber.replace(/\D/g, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-emerald-400 hover:underline font-mono font-semibold flex items-center gap-1"
