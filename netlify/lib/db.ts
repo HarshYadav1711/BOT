@@ -7,9 +7,13 @@ declare global {
 }
 
 function buildPoolConfig(connectionString: string): PoolConfig {
+  const sslMode = (process.env.DATABASE_SSL || '').trim().toLowerCase();
   const isLocal =
-    /localhost|127\.0\.0\.1/i.test(connectionString) ||
-    process.env.DATABASE_SSL === 'disable';
+    sslMode === 'disable' ||
+    /localhost|127\.0\.0\.1/i.test(connectionString);
+
+  /** Explicit opt-in only — never the default. */
+  const allowNoVerify = sslMode === 'no-verify';
 
   return {
     connectionString,
@@ -19,10 +23,12 @@ function buildPoolConfig(connectionString: string): PoolConfig {
     connectionTimeoutMillis: 10_000,
     ...(isLocal
       ? {}
-      : {
-          // Keep certificate validation enabled (do not set rejectUnauthorized: false).
-          ssl: { rejectUnauthorized: true },
-        }),
+      : allowNoVerify
+        ? { ssl: { rejectUnauthorized: false } }
+        : {
+            // Keep certificate validation enabled by default.
+            ssl: { rejectUnauthorized: true },
+          }),
   };
 }
 

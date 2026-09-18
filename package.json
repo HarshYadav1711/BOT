@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "typecheck:server": "tsc -p tsconfig.netlify.json --noEmit"
+    "typecheck:server": "tsc -p tsconfig.netlify.json --noEmit",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:smoke": "node scripts/db-smoke.mjs"
   },
   "dependencies": {
     "@netlify/functions": "^6.0.0",
