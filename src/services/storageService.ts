@@ -1,12 +1,6 @@
 import type { Applicant, ApplicationStatus, InterviewDetails } from '../types/registration';
 
 const REGISTRATIONS_KEY = 'ucer_cultural_cell_registrations_v1';
-const ADMIN_SESSION_KEY = 'ucer_admin_auth_session';
-const ADMIN_USER_KEY = 'ucer_admin_username_v1';
-const ADMIN_PWD_KEY = 'ucer_admin_pwd_v1';
-
-const DEFAULT_ADMIN_USER = 'admin';
-const DEFAULT_ADMIN_PWD = 'enigma2025@ucer';
 
 const INITIAL_SEED_APPLICANTS: Applicant[] = [
   {
@@ -275,41 +269,6 @@ export const storageService = {
     return INITIAL_SEED_APPLICANTS;
   },
 
-  // Secure Admin Authentication
-  isAdminLoggedIn(): boolean {
-    return localStorage.getItem(ADMIN_SESSION_KEY) === 'authenticated';
-  },
-
-  getAdminUsername(): string {
-    return localStorage.getItem(ADMIN_USER_KEY) || DEFAULT_ADMIN_USER;
-  },
-
-  getAdminPassword(): string {
-    return localStorage.getItem(ADMIN_PWD_KEY) || DEFAULT_ADMIN_PWD;
-  },
-
-  loginAdmin(password: string, username = 'admin'): boolean {
-    const expectedUser = this.getAdminUsername();
-    const expectedPwd = this.getAdminPassword();
-
-    if (username.trim() === expectedUser && password.trim() === expectedPwd) {
-      localStorage.setItem(ADMIN_SESSION_KEY, 'authenticated');
-      return true;
-    }
-    return false;
-  },
-
-  changeAdminCredentials(newUsername: string, newPassword: string): boolean {
-    if (!newUsername.trim() || !newPassword.trim()) return false;
-    localStorage.setItem(ADMIN_USER_KEY, newUsername.trim());
-    localStorage.setItem(ADMIN_PWD_KEY, newPassword.trim());
-    return true;
-  },
-
-  logoutAdmin(): void {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-  },
-
   // WhatsApp generator utilities
   generateWhatsAppInviteLink(applicant: Applicant): string {
     const intPhone = toWhatsAppPhone(applicant.whatsappNumber);
@@ -363,9 +322,9 @@ Instagram: @enigmafest_25`;
     return buildWhatsAppUrl(intPhone, message);
   },
 
-  exportRegistrationsCSV(): void {
-    const list = this.getRegistrations();
-    if (list.length === 0) {
+  exportRegistrationsCSV(list?: Applicant[]): void {
+    const data = list ?? this.getRegistrations();
+    if (data.length === 0) {
       alert('No registrations to export.');
       return;
     }
@@ -393,7 +352,7 @@ Instagram: @enigmafest_25`;
       'Submitted At',
     ];
 
-    const rows = list.map((a) => [
+    const rows = data.map((a) => [
       escapeCsv(a.id),
       escapeCsv(a.fullName),
       escapeCsv(a.universityRollNo),

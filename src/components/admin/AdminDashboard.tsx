@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, 
   Crown, 
@@ -25,21 +25,33 @@ import {
 import type { Applicant, ApplicationStatus, InterviewDetails } from '../../types/registration';
 import { DOMAINS_DATA } from '../../data/culturalCellData';
 import { storageService } from '../../services/storageService';
+import {
+  ApiError,
+  deleteAdminRegistration,
+  getAdminRegistrations,
+  getAdminSession,
+  updateAdminCredentials,
+  updateAdminInterview,
+  updateAdminRegistrationStatus,
+} from '../../services/apiService';
 
 interface AdminDashboardProps {
   onBackToSite: () => void;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
+  onSessionExpired: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onBackToSite,
   onLogout,
+  onSessionExpired,
 }) => {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterYear, setFilterYear] = useState<string>('All');
   const [filterDomain, setFilterDomain] = useState<string>('All');
   const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [adminUsername, setAdminUsername] = useState('admin');
 
   // Selected applicant for the review/interview modal
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
@@ -60,15 +72,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [interviewNotes, setInterviewNotes] = useState('');
   const [adminRemarks, setAdminRemarks] = useState('');
 
-  // Load applicants from local storage on mount
-  const refreshData = () => {
-    const list = storageService.getRegistrations();
-    setApplicants(list);
-  };
+  const handleAuthFailure = useCallback((err: unknown) => {
+    if (err instanceof ApiError && (err.code === 'UNAUTHORIZED' || err.status === 401)) {
+      onSessionExpired();
+      return true;
+    }
+    return false;
+  }, [onSessionExpired]);
+
+  // Load applicants from protected PostgreSQL API
+  const refreshData = useCallback(async () => {
+    try {
+      const list = await getAdminRegistrations();
+      setApplicants(list);
+    } catch (err) {
+      if (handleAuthFailure(err)) return;
+      alert('Unable to load registrations from the server. Please try again.');
+    }
+  }, [handleAuthFailure]);
 
   useEffect(() => {
-    refreshData();
-  }, []);
+    void refreshData();
+    void (async () => {
+      try {
+        const session = await getAdminSession();
+        if (session.authenticated && session.username) {
+          setAdminUsername(session.username);
+        }
+      } catch {
+        // ignore — dashboard load will surface auth issues
+      }
+    })();
+  }, [refreshData]);
 
   // When opening an applicant modal, initialize interview form fields
   const handleOpenApplicantModal = (applicant: Applicant) => {
@@ -87,18 +122,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // Quick status update
-  const handleUpdateStatus = (id: string, newStatus: ApplicationStatus) => {
-    const updated = storageService.updateApplicantStatus(id, newStatus, adminRemarks);
-    if (updated) {
-      refreshData();
+  const handleUpdateStatus = async (id: string, newStatus: ApplicationStatus) => {
+    try {
+      const updated = await updateAdminRegistrationStatus(id, newStatus, adminRemarks);
+      setApplicants((prev) => prev.map((a) => (a.id === id ? updated : a)));
       if (selectedApplicant && selectedApplicant.id === id) {
         setSelectedApplicant(updated);
       }
+    } catch (err) {
+      if (handleAuthFailure(err)) return;
+      alert('Unable to update status. Please try again.');
     }
   };
 
   // Save Interview schedule
-  const handleSaveInterviewSchedule = () => {
+  const handleSaveInterviewSchedule = async () => {
     if (!selectedApplicant) return;
 
     const interviewData: InterviewDetails = {
@@ -109,36 +147,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       notes: interviewNotes,
     };
 
-    const updated = storageService.scheduleInterview(selectedApplicant.id, interviewData, adminRemarks);
-    if (updated) {
-      refreshData();
+    try {
+      const updated = await updateAdminInterview(
+        selectedApplicant.id,
+        interviewData,
+        adminRemarks
+      );
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === selectedApplicant.id ? updated : a))
+      );
       setSelectedApplicant(updated);
-      alert(`Interview scheduled successfully for ${selectedApplicant.fullName}! You can now send them a WhatsApp invite.`);
+      alert(
+        `Interview scheduled successfully for ${selectedApplicant.fullName}! You can now send them a WhatsApp invite.`
+      );
+    } catch (err) {
+      if (handleAuthFailure(err)) return;
+      alert('Unable to schedule interview. Please try again.');
     }
   };
 
   // Delete applicant
-  const handleDeleteApplicant = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete applicant "${name}"?`)) {
-      storageService.deleteApplicant(id);
-      refreshData();
+  const handleDeleteApplicant = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete applicant "${name}"?`)) return;
+
+    try {
+      await deleteAdminRegistration(id);
+      setApplicants((prev) => prev.filter((a) => a.id !== id));
       if (selectedApplicant?.id === id) {
         setSelectedApplicant(null);
       }
+    } catch (err) {
+      if (handleAuthFailure(err)) return;
+      alert('Unable to delete registration. Please try again.');
     }
   };
 
-  // Reset to sample data
+  // Reset seed is intentionally not migrated to PostgreSQL (destructive).
   const handleResetData = () => {
     if (confirm('Reset database to default seed data?')) {
-      const list = storageService.resetToSeed();
-      setApplicants(list);
-      setSelectedApplicant(null);
+      alert(
+        'Reset to sample data is not available for the shared database. Live registrations are stored in PostgreSQL and will not be wiped from this panel.'
+      );
     }
   };
 
-  // Handle Changing Credentials
-  const handleSaveCredentials = (e: React.FormEvent) => {
+  // Handle Changing Credentials (server-side; session revoked after success)
+  const handleSaveCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setCredsError('');
     setCredsSuccess('');
@@ -158,14 +212,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return;
     }
 
-    const ok = storageService.changeAdminCredentials(newUsername, newPassword);
-    if (ok) {
+    try {
+      await updateAdminCredentials(newUsername.trim(), newPassword);
       setCredsSuccess('Admin credentials updated securely! Only you know this new password.');
       setTimeout(() => {
         setIsCredsModalOpen(false);
+        void onLogout();
       }, 1500);
-    } else {
-      setCredsError('Failed to update credentials.');
+    } catch (err) {
+      if (handleAuthFailure(err)) return;
+      setCredsError(
+        err instanceof ApiError ? err.message : 'Failed to update credentials.'
+      );
     }
   };
 
@@ -236,7 +294,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* Change Password / Security */}
           <button
             onClick={() => {
-              setNewUsername(storageService.getAdminUsername());
+              setNewUsername(adminUsername);
               setNewPassword('');
               setConfirmPassword('');
               setCredsError('');
@@ -252,7 +310,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {/* CSV Export */}
           <button
-            onClick={() => storageService.exportRegistrationsCSV()}
+            onClick={() => storageService.exportRegistrationsCSV(applicants)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold transition-colors"
             title="Download CSV spreadsheet of all registered students"
           >

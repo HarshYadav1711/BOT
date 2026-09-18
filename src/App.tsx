@@ -11,7 +11,7 @@ import { StatusCheckModal } from './components/StatusCheckModal';
 import { RegistrationSlipModal } from './components/RegistrationSlipModal';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
-import { storageService } from './services/storageService';
+import { adminLogout, getAdminSession } from './services/apiService';
 import type { Applicant, DomainType, YearType } from './types/registration';
 import { DOMAINS_DATA } from './data/culturalCellData';
 
@@ -28,9 +28,24 @@ export const App: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<YearType>('2nd Year');
   const [selectedDomain, setSelectedDomain] = useState<DomainType>(DOMAINS_DATA[0].id);
 
-  // Check existing admin session
+  // Restore admin session from HttpOnly server cookie
   useEffect(() => {
-    setIsAdminLoggedIn(storageService.isAdminLoggedIn());
+    let cancelled = false;
+    (async () => {
+      try {
+        const session = await getAdminSession();
+        if (!cancelled) {
+          setIsAdminLoggedIn(session.authenticated);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAdminLoggedIn(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAdminLoginSuccess = () => {
@@ -38,8 +53,13 @@ export const App: React.FC = () => {
     setIsAdminView(true);
   };
 
-  const handleAdminLogout = () => {
-    storageService.logoutAdmin();
+  const handleAdminLogout = async () => {
+    await adminLogout();
+    setIsAdminLoggedIn(false);
+    setIsAdminView(false);
+  };
+
+  const handleAdminSessionExpired = () => {
     setIsAdminLoggedIn(false);
     setIsAdminView(false);
   };
@@ -62,6 +82,7 @@ export const App: React.FC = () => {
       <AdminDashboard
         onBackToSite={() => setIsAdminView(false)}
         onLogout={handleAdminLogout}
+        onSessionExpired={handleAdminSessionExpired}
       />
     );
   }

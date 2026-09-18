@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Lock, User, X, AlertCircle } from 'lucide-react';
-import { storageService } from '../../services/storageService';
+import { ApiError, adminLogin } from '../../services/apiService';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -16,10 +16,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -28,15 +29,26 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    const success = storageService.loginAdmin(password, username);
-    if (success) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      await adminLogin(username.trim(), password);
       setUsername('');
       setPassword('');
       setError('');
       onLoginSuccess();
       onClose();
-    } else {
-      setError('Access Denied: Invalid Admin Username or Password.');
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === 'INVALID_CREDENTIALS' || err.status === 401)) {
+        setError('Access Denied: Invalid Admin Username or Password.');
+      } else if (err instanceof ApiError) {
+        setError('Access Denied: Invalid Admin Username or Password.');
+      } else {
+        setError('Access Denied: Invalid Admin Username or Password.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -96,6 +108,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   placeholder="Enter admin ID"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-purple-400 font-mono"
                   autoFocus
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -112,6 +125,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-purple-400"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -119,7 +133,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-purple-600/25 transition-all"
+                disabled={isSubmitting}
+                className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-purple-600/25 transition-all disabled:opacity-50"
               >
                 Sign In to Management Panel
               </button>

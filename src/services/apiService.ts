@@ -3,6 +3,7 @@ import type {
   ApplicationStatus,
   DomainType,
   GenderType,
+  InterviewDetails,
   YearType,
 } from '../types/registration';
 
@@ -29,6 +30,10 @@ export type ApiErrorCode =
   | 'DUPLICATE_REGISTRATION'
   | 'INVALID_INPUT'
   | 'APPLICATION_ID_COLLISION'
+  | 'INVALID_CREDENTIALS'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
   | 'UNEXPECTED_RESPONSE';
@@ -52,7 +57,8 @@ export class ApiError extends Error {
   }
 }
 
-type PublicRegistrationResponse = {
+type ServerRegistration = {
+  id?: string;
   applicationId: string;
   fullName: string;
   universityRollNo: string;
@@ -62,20 +68,46 @@ type PublicRegistrationResponse = {
   whatsappNumber: string;
   email: string;
   primaryDomain: DomainType;
-  secondaryDomain: DomainType | null;
+  secondaryDomain?: DomainType | null;
   roleApplied: string;
   pastExperience: string;
-  portfolioUrl: string | null;
+  portfolioUrl?: string | null;
   motivation: string;
   wasInPreviousEnigma: boolean;
-  previousRoleDetails: string | null;
+  previousRoleDetails?: string | null;
   status: ApplicationStatus;
+  interviewDetails?: InterviewDetails | null;
+  adminRemarks?: string | null;
   submittedAt: string;
 };
 
-function mapRegistrationToApplicant(reg: PublicRegistrationResponse): Applicant {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+async function readJsonSafe(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function mapRegistrationToApplicant(reg: ServerRegistration): Applicant {
+  const interview = reg.interviewDetails;
+  const hasInterview =
+    interview &&
+    (interview.date ||
+      interview.time ||
+      interview.venue ||
+      interview.notes ||
+      interview.score != null ||
+      interview.scheduledAt);
+
   return {
-    id: reg.applicationId,
+    id: reg.applicationId || reg.id || '',
     fullName: reg.fullName,
     universityRollNo: reg.universityRollNo,
     gender: reg.gender,
@@ -92,22 +124,84 @@ function mapRegistrationToApplicant(reg: PublicRegistrationResponse): Applicant 
     wasInPreviousEnigma: reg.wasInPreviousEnigma,
     ...(reg.previousRoleDetails ? { previousRoleDetails: reg.previousRoleDetails } : {}),
     status: reg.status,
+    ...(hasInterview && interview ? { interviewDetails: interview } : {}),
+    ...(reg.adminRemarks ? { adminRemarks: reg.adminRemarks } : {}),
     submittedAt: reg.submittedAt,
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+async function apiFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<{ response: Response; payload: unknown }> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init.headers,
+      },
+    });
+  } catch {
+    throw new ApiError(
+      'NETWORK_ERROR',
+      'Unable to reach the server. Please try again.',
+      0
+    );
+  }
+
+  const payload = await readJsonSafe(response);
+  return { response, payload };
 }
 
-async function readJsonSafe(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
+function throwFromErrorPayload(response: Response, payload: unknown, fallback: string): never {
+  const errorObj = isRecord(payload) && isRecord(payload.error) ? payload.error : null;
+  const code =
+    typeof errorObj?.code === 'string'
+      ? (errorObj.code as ApiErrorCode)
+      : response.status === 401
+        ? 'UNAUTHORIZED'
+        : 'INTERNAL_ERROR';
+  const message =
+    typeof errorObj?.message === 'string' ? errorObj.message : fallback;
+  const fields =
+    isRecord(errorObj?.details) &&
+    Object.values(errorObj.details).every((v) => typeof v === 'string')
+      ? (errorObj.details as Record<string, string>)
+      : undefined;
+
+  if (code === 'DUPLICATE_REGISTRATION') {
+    throw new ApiError(
+      'DUPLICATE_REGISTRATION',
+      'A registration already exists for this university roll number.',
+      response.status,
+      fields
+    );
   }
+
+  throw new ApiError(code, message, response.status, fields);
+}
+
+function parseRegistrationPayload(payload: unknown, response: Response): Applicant {
+  if (!isRecord(payload) || payload.ok !== true || !isRecord(payload.registration)) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Unexpected server response. Please try again.',
+      response.status
+    );
+  }
+  const reg = payload.registration as ServerRegistration;
+  if (!reg.applicationId && !reg.id) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Unexpected server response. Please try again.',
+      response.status
+    );
+  }
+  return mapRegistrationToApplicant(reg);
 }
 
 /**
@@ -117,70 +211,200 @@ async function readJsonSafe(response: Response): Promise<unknown> {
 export async function createRegistration(
   input: CreateRegistrationPayload
 ): Promise<Applicant> {
-  let response: Response;
-  try {
-    response = await fetch('/.netlify/functions/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    throw new ApiError(
-      'NETWORK_ERROR',
-      'Unable to submit your registration right now. Please try again.',
-      0
-    );
-  }
-
-  const payload = await readJsonSafe(response);
+  const { response, payload } = await apiFetch('/.netlify/functions/register', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 
   if (!response.ok) {
-    const errorObj = isRecord(payload) && isRecord(payload.error) ? payload.error : null;
-    const code =
-      typeof errorObj?.code === 'string'
-        ? (errorObj.code as ApiErrorCode)
-        : 'INTERNAL_ERROR';
-    const message =
-      typeof errorObj?.message === 'string'
-        ? errorObj.message
-        : 'Unable to submit your registration right now. Please try again.';
-    const fields =
-      isRecord(errorObj?.details) &&
-      Object.values(errorObj.details).every((v) => typeof v === 'string')
-        ? (errorObj.details as Record<string, string>)
-        : undefined;
+    throwFromErrorPayload(
+      response,
+      payload,
+      'Unable to submit your registration right now. Please try again.'
+    );
+  }
 
-    if (code === 'DUPLICATE_REGISTRATION') {
-      throw new ApiError(
-        'DUPLICATE_REGISTRATION',
-        'A registration already exists for this university roll number.',
-        response.status,
-        fields
-      );
+  return parseRegistrationPayload(payload, response);
+}
+
+export async function adminLogin(
+  username: string,
+  password: string
+): Promise<{ username: string; expiresAt: string }> {
+  const { response, payload } = await apiFetch('/.netlify/functions/admin-login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!response.ok) {
+    throwFromErrorPayload(
+      response,
+      payload,
+      'Access Denied: Invalid Admin Username or Password.'
+    );
+  }
+
+  if (!isRecord(payload) || payload.ok !== true) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Access Denied: Invalid Admin Username or Password.',
+      response.status
+    );
+  }
+
+  return {
+    username: typeof payload.username === 'string' ? payload.username : username,
+    expiresAt: typeof payload.expiresAt === 'string' ? payload.expiresAt : '',
+  };
+}
+
+export async function getAdminSession(): Promise<{
+  authenticated: boolean;
+  username?: string;
+  expiresAt?: string;
+}> {
+  const { response, payload } = await apiFetch('/.netlify/functions/admin-session', {
+    method: 'GET',
+  });
+
+  if (response.status === 401) {
+    return { authenticated: false };
+  }
+
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Unable to verify admin session.');
+  }
+
+  if (!isRecord(payload) || payload.ok !== true) {
+    return { authenticated: false };
+  }
+
+  return {
+    authenticated: true,
+    username: typeof payload.username === 'string' ? payload.username : undefined,
+    expiresAt: typeof payload.expiresAt === 'string' ? payload.expiresAt : undefined,
+  };
+}
+
+export async function adminLogout(): Promise<void> {
+  try {
+    await apiFetch('/.netlify/functions/admin-logout', { method: 'POST' });
+  } catch {
+    // Still treat client as logged out if network fails after expiry.
+  }
+}
+
+export async function getAdminRegistrations(): Promise<Applicant[]> {
+  const { response, payload } = await apiFetch('/.netlify/functions/admin-registrations', {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Unable to load registrations.');
+  }
+
+  if (!isRecord(payload) || payload.ok !== true || !Array.isArray(payload.registrations)) {
+    throw new ApiError(
+      'UNEXPECTED_RESPONSE',
+      'Unable to load registrations.',
+      response.status
+    );
+  }
+
+  return (payload.registrations as ServerRegistration[]).map(mapRegistrationToApplicant);
+}
+
+export async function updateAdminRegistrationStatus(
+  applicationId: string,
+  status: ApplicationStatus,
+  adminRemarks?: string
+): Promise<Applicant> {
+  const body: Record<string, unknown> = { applicationId, status };
+  if (adminRemarks !== undefined) body.adminRemarks = adminRemarks;
+
+  const { response, payload } = await apiFetch(
+    '/.netlify/functions/admin-registration-status',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
     }
+  );
 
-    throw new ApiError(code, message, response.status, fields);
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Unable to update status.');
   }
 
-  if (!isRecord(payload) || payload.ok !== true || !isRecord(payload.registration)) {
+  return parseRegistrationPayload(payload, response);
+}
+
+export async function updateAdminInterview(
+  applicationId: string,
+  interview: InterviewDetails,
+  adminRemarks?: string
+): Promise<Applicant> {
+  const body: Record<string, unknown> = {
+    applicationId,
+    interview: {
+      date: interview.date,
+      time: interview.time,
+      venue: interview.venue,
+      notes: interview.notes,
+      score: interview.score,
+    },
+  };
+  if (adminRemarks !== undefined) body.adminRemarks = adminRemarks;
+
+  const { response, payload } = await apiFetch(
+    '/.netlify/functions/admin-registration-interview',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Unable to schedule interview.');
+  }
+
+  return parseRegistrationPayload(payload, response);
+}
+
+export async function deleteAdminRegistration(applicationId: string): Promise<void> {
+  const { response, payload } = await apiFetch(
+    '/.netlify/functions/admin-registration-delete',
+    {
+      method: 'POST',
+      body: JSON.stringify({ applicationId }),
+    }
+  );
+
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Unable to delete registration.');
+  }
+}
+
+export async function updateAdminCredentials(
+  username: string,
+  password: string
+): Promise<{ username: string }> {
+  const { response, payload } = await apiFetch('/.netlify/functions/admin-credentials', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!response.ok) {
+    throwFromErrorPayload(response, payload, 'Failed to update credentials.');
+  }
+
+  if (!isRecord(payload) || payload.ok !== true) {
     throw new ApiError(
       'UNEXPECTED_RESPONSE',
-      'Unable to submit your registration right now. Please try again.',
+      'Failed to update credentials.',
       response.status
     );
   }
 
-  const reg = payload.registration as PublicRegistrationResponse;
-  if (typeof reg.applicationId !== 'string' || !reg.applicationId) {
-    throw new ApiError(
-      'UNEXPECTED_RESPONSE',
-      'Unable to submit your registration right now. Please try again.',
-      response.status
-    );
-  }
-
-  return mapRegistrationToApplicant(reg);
+  return {
+    username: typeof payload.username === 'string' ? payload.username : username,
+  };
 }
