@@ -1,6 +1,6 @@
-# 🎭 Cultural Cell UCER — ENIGMA 2025 Official Recruitment Portal
+# 🎭 Cultural Cell UCER — ENIGMA 2026 Official Recruitment Portal
 
-Official recruitment and interview management web application for **Cultural Cell UCER** (United College of Engineering and Research, Prayagraj) for their flagship annual fest **ENIGMA 2025**.
+Official recruitment and interview management web application for **Cultural Cell UCER** (United College of Engineering and Research, Prayagraj) for their flagship annual fest **ENIGMA 2026**.
 
 ---
 

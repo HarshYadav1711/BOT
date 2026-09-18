@@ -38,7 +38,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Cultural Cell UCER
                 </span>
                 <span className="text-[11px] text-amber-400 font-semibold">
-                  ENIGMA 2025
+                  ENIGMA 2026
                 </span>
               </div>
             </div>

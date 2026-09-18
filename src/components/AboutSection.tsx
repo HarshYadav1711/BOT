@@ -49,7 +49,7 @@ export const AboutSection: React.FC = () => {
     {
       step: '04',
       title: 'Final Selection',
-      desc: 'Selected volunteers & heads receive WhatsApp induction invitations and commence official Enigma 2025 operations.',
+      desc: 'Selected volunteers & heads receive WhatsApp induction invitations and commence official Enigma 2026 operations.',
     },
   ];
 
@@ -106,7 +106,7 @@ export const AboutSection: React.FC = () => {
             </p>
           </div>
           <span className="self-start sm:self-auto px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            Enigma 2025 Edition
+            Enigma 2026 Edition
           </span>
         </div>
 

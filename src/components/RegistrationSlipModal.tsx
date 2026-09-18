@@ -54,7 +54,7 @@ export const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
               United College of Engineering and Research, Prayagraj
             </div>
             <h3 className="text-2xl font-black text-white font-heading">
-              CULTURAL CELL • ENIGMA 2025
+              CULTURAL CELL • ENIGMA 2026
             </h3>
             <p className="text-xs text-gray-400">
               Official Candidate Recruitment Pass

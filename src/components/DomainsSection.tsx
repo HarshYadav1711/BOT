@@ -59,7 +59,7 @@ export const DomainsSection: React.FC<DomainsSectionProps> = ({
           EXPLORE DOMAINS & ROLES
         </h2>
         <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-          Whether you build code, shoot cinematic frames, orchestrate crowd flow, or pitch corporate sponsors — there is an impactful place for your genius at Enigma 2025.
+          Whether you build code, shoot cinematic frames, orchestrate crowd flow, or pitch corporate sponsors — there is an impactful place for your genius at Enigma 2026.
         </p>
       </div>
 
@@ -104,7 +104,7 @@ export const DomainsSection: React.FC<DomainsSectionProps> = ({
                   {activeDomain.title}
                 </h3>
                 <p className="text-xs text-amber-400 font-medium tracking-wide">
-                  Enigma 2025 Core Vertical
+                  Enigma 2026 Core Vertical
                 </p>
               </div>
             </div>

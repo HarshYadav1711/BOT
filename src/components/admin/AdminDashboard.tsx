@@ -285,7 +285,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-gray-400 hidden sm:block">
-              Enigma 2025 Volunteer & Domain Head Scrutiny
+              Enigma 2026 Volunteer & Domain Head Scrutiny
             </p>
           </div>
         </div>

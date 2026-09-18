@@ -40,12 +40,12 @@ export const storageService = {
     const intPhone = toWhatsAppPhone(applicant.whatsappNumber);
     const interview = applicant.interviewDetails;
 
-    const message = `🎉 *Cultural Cell UCER — ENIGMA 2025 Interview Shortlist* 🎉
+    const message = `🎉 *Cultural Cell UCER — ENIGMA 2026 Interview Shortlist* 🎉
 
 Dear *${applicant.fullName}*,
 
 Greetings from Cultural Cell UCER!
-Your application for *${applicant.roleApplied}* (${applicant.primaryDomain}) for our annual fest *ENIGMA 2025* has been *SHORTLISTED* for the personal interview round.
+Your application for *${applicant.roleApplied}* (${applicant.primaryDomain}) for our annual fest *ENIGMA 2026* has been *SHORTLISTED* for the personal interview round.
 
 🗓 *Interview Details:*
 • Date: ${interview?.date || 'To be announced'}
@@ -57,7 +57,7 @@ Please arrive 10 minutes prior with your ID card and past portfolio/work samples
 
 Regards,
 *Himanshu Mishra (President)*
-Cultural Cell UCER | Enigma 2025
+Cultural Cell UCER | Enigma 2026
 Contact: 8960194225`;
 
     return buildWhatsAppUrl(intPhone, message);
@@ -66,19 +66,19 @@ Contact: 8960194225`;
   generateWhatsAppSelectionLink(applicant: Applicant): string {
     const intPhone = toWhatsAppPhone(applicant.whatsappNumber);
 
-    const message = `🌟 *CONGRATULATIONS! YOU ARE SELECTED FOR ENIGMA 2025* 🌟
+    const message = `🌟 *CONGRATULATIONS! YOU ARE SELECTED FOR ENIGMA 2026* 🌟
 
 Dear *${applicant.fullName}*,
 
-We are thrilled to welcome you to the official organizing team of *Cultural Cell UCER* for *ENIGMA 2025*!
+We are thrilled to welcome you to the official organizing team of *Cultural Cell UCER* for *ENIGMA 2026*!
 
 ✨ *Assigned Role:* ${applicant.roleApplied}
 📌 *Domain:* ${applicant.primaryDomain}
 🎫 *Application ID:* ${applicant.id}
 
-The Core Team will be adding you to the official Enigma 2025 WhatsApp workspace soon for orientation and briefing.
+The Core Team will be adding you to the official Enigma 2026 WhatsApp workspace soon for orientation and briefing.
 
-Welcome to the family! Let's make Enigma 2025 legendary!
+Welcome to the family! Let's make Enigma 2026 legendary!
 
 Best wishes,
 *Cultural Cell UCER Core Team*
@@ -146,7 +146,7 @@ Instagram: @enigmafest_25`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `UCER_Enigma2025_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `UCER_Enigma2026_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

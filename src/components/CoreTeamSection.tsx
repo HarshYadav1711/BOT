@@ -21,7 +21,7 @@ export const CoreTeamSection: React.FC = () => {
           CORE CULTURAL CELL TEAM
         </h2>
         <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-          The driving minds behind the Cultural Cell UCER and ENIGMA 2025. Leading creative direction, event production, student relations, and institutional cultural legacy.
+          The driving minds behind the Cultural Cell UCER and ENIGMA 2026. Leading creative direction, event production, student relations, and institutional cultural legacy.
         </p>
       </div>
 
@@ -116,7 +116,7 @@ export const CoreTeamSection: React.FC = () => {
 
                 {isLeadPresident && (
                   <p className="text-xs text-gray-300 mt-3 leading-relaxed">
-                    Spearheading Cultural Cell UCER operations, institutional coordination, festival planning, and student inductions for ENIGMA 2025.
+                    Spearheading Cultural Cell UCER operations, institutional coordination, festival planning, and student inductions for ENIGMA 2026.
                   </p>
                 )}
               </div>

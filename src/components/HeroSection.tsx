@@ -41,7 +41,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-              Official Recruitment 2025 • Cultural Cell UCER
+              Official Recruitment 2026 • Cultural Cell UCER
             </span>
             <span className="text-xs text-gray-400">|</span>
             <span className="text-xs font-medium text-rose-300">
@@ -165,7 +165,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               {/* Poster info footer */}
               <div className="mt-3 px-2 py-1 flex items-center justify-between text-xs text-gray-300">
                 <span className="font-semibold text-white">Cultural Cell UCER</span>
-                <span className="text-amber-400 font-mono">ENIGMA '25</span>
+                <span className="text-amber-400 font-mono">ENIGMA '26</span>
               </div>
             </div>
           </div>

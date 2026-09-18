@@ -184,7 +184,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           <span>Open Public Recruitment • No Student Login Required</span>
         </div>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white font-heading tracking-tight">
-          ENIGMA 2025 REGISTRATION
+          ENIGMA 2026 REGISTRATION
         </h2>
         <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
           Fill in your credentials accurately. All registrations directly populate into the executive scrutiny panel for interview shortlisting.
@@ -552,7 +552,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             {/* Motivation */}
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1">
-                Why do you want to join Cultural Cell UCER for Enigma 2025? <span className="text-rose-400">*</span>
+                Why do you want to join Cultural Cell UCER for Enigma 2026? <span className="text-rose-400">*</span>
               </label>
               <textarea
                 rows={2}

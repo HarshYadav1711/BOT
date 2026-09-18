@@ -1,7 +1,7 @@
 import type { CoreTeamMember, DomainInfo } from '../types/registration';
 
 export const ENIGMA_INFO = {
-  festName: 'ENIGMA 2025',
+  festName: 'ENIGMA 2026',
   tagline: 'CELEBRATE • CREATE • CONNECT',
   subTagline: 'One Campus • Many Talents • One Stage',
   motto: 'Express • Create • Belong',

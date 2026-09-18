@@ -183,7 +183,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
                         <span>Welcome to Cultural Cell UCER!</span>
                       </div>
                       <p className="text-gray-200">
-                        You have officially been appointed to the Enigma 2025 organizing team! The core committee will be contacting you on WhatsApp (+91 {result.whatsappNumber}) shortly.
+                        You have officially been appointed to the Enigma 2026 organizing team! The core committee will be contacting you on WhatsApp (+91 {result.whatsappNumber}) shortly.
                       </p>
                     </div>
                   )}
@@ -211,7 +211,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
                     }}
                     className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 transition-all"
                   >
-                    Register for Enigma 2025 Now
+                    Register for Enigma 2026 Now
                   </button>
                 </div>
               )}
@@ -226,7 +226,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <a
-                href={`https://wa.me/918960194225?text=${encodeURIComponent('Hello Himanshu, I have a query regarding my Enigma 2025 registration.')}`}
+                href={`https://wa.me/918960194225?text=${encodeURIComponent('Hello Himanshu, I have a query regarding my Enigma 2026 registration.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-semibold hover:bg-emerald-500/30 transition-colors"
