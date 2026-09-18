@@ -10,11 +10,13 @@
     "preview": "vite preview",
     "typecheck:server": "tsc -p tsconfig.netlify.json --noEmit",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:smoke": "node scripts/db-smoke.mjs"
+    "db:smoke": "node scripts/db-smoke.mjs",
+    "db:admin-smoke": "node scripts/db-admin-smoke.mjs"
   },
   "dependencies": {
     "@netlify/functions": "^6.0.0",
     "@tailwindcss/vite": "^4.3.3",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^1.31.0",
     "pg": "^8.23.0",
     "react": "^19.2.8",
@@ -22,6 +24,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.2.17",
