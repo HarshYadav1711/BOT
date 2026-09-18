@@ -227,13 +227,64 @@ export async function createRegistration(
   return parseRegistrationPayload(payload, response);
 }
 
+/** Public status-check payload (allowlisted fields only). */
+export type StatusCheckResult = {
+  id: string;
+  fullName: string;
+  universityRollNo: string;
+  roleApplied: string;
+  primaryDomain: DomainType;
+  status: ApplicationStatus;
+  whatsappNumber: string;
+  interviewDetails?: Pick<InterviewDetails, 'date' | 'time' | 'venue'>;
+};
+
+function mapStatusPayload(reg: Record<string, unknown>): StatusCheckResult {
+  const applicationId =
+    typeof reg.applicationId === 'string'
+      ? reg.applicationId
+      : typeof reg.id === 'string'
+        ? reg.id
+        : '';
+
+  if (!applicationId) {
+    throw new ApiError('UNEXPECTED_RESPONSE', 'Unexpected server response. Please try again.', 500);
+  }
+
+  const interview = isRecord(reg.interviewDetails) ? reg.interviewDetails : null;
+  const hasInterview =
+    interview &&
+    (typeof interview.date === 'string' ||
+      typeof interview.time === 'string' ||
+      typeof interview.venue === 'string');
+
+  return {
+    id: applicationId,
+    fullName: typeof reg.fullName === 'string' ? reg.fullName : '',
+    universityRollNo: typeof reg.universityRollNo === 'string' ? reg.universityRollNo : '',
+    roleApplied: typeof reg.roleApplied === 'string' ? reg.roleApplied : '',
+    primaryDomain: reg.primaryDomain as DomainType,
+    status: reg.status as ApplicationStatus,
+    whatsappNumber: typeof reg.whatsappNumber === 'string' ? reg.whatsappNumber : '',
+    ...(hasInterview && interview
+      ? {
+          interviewDetails: {
+            ...(typeof interview.date === 'string' ? { date: interview.date } : {}),
+            ...(typeof interview.time === 'string' ? { time: interview.time } : {}),
+            ...(typeof interview.venue === 'string' ? { venue: interview.venue } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
 /**
  * Public status lookup by application ID or university roll number.
- * Returns null when no matching registration exists (same as prior localStorage miss).
+ * Returns null when no matching registration exists.
  */
 export async function checkRegistrationStatus(
   identifier: string
-): Promise<Applicant | null> {
+): Promise<StatusCheckResult | null> {
   const { response, payload } = await apiFetch('/.netlify/functions/status', {
     method: 'POST',
     body: JSON.stringify({ identifier }),
@@ -259,16 +310,7 @@ export async function checkRegistrationStatus(
     );
   }
 
-  const reg = payload.registration as ServerRegistration;
-  if (!reg.applicationId && !reg.id) {
-    throw new ApiError(
-      'UNEXPECTED_RESPONSE',
-      'Unexpected server response. Please try again.',
-      response.status
-    );
-  }
-
-  return mapRegistrationToApplicant(reg);
+  return mapStatusPayload(payload.registration);
 }
 
 export async function adminLogin(

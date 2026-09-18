@@ -169,7 +169,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         return;
       }
 
-      console.error(err);
       alert('Unable to submit your registration right now. Please try again.');
     } finally {
       setIsSubmitting(false);

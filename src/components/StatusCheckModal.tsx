@@ -14,8 +14,7 @@ import {
   MessageCircle,
   Crown
 } from 'lucide-react';
-import { checkRegistrationStatus } from '../services/apiService';
-import type { Applicant } from '../types/registration';
+import { checkRegistrationStatus, type StatusCheckResult } from '../services/apiService';
 
 interface StatusCheckModalProps {
   isOpen: boolean;
@@ -29,7 +28,7 @@ export const StatusCheckModal: React.FC<StatusCheckModalProps> = ({
   onRegisterClick,
 }) => {
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<Applicant | null>(null);
+  const [result, setResult] = useState<StatusCheckResult | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   if (!isOpen) return null;

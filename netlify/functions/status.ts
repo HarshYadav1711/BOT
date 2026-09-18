@@ -6,29 +6,18 @@ import type { RegistrationRecord } from '../lib/types';
 import { validateStatusIdentifierInput } from '../lib/validation';
 
 /**
- * Public status shape for the applicant status tracker.
- * Mirrors applicant-visible registration fields used by StatusCheckModal.
- * Omits admin remarks and interview notes/scores.
+ * Explicit allowlist of fields StatusCheckModal displays.
+ * Do not add essays, admin remarks, scores, notes, or internal IDs.
  */
 function toPublicStatusRegistration(record: RegistrationRecord) {
   return {
     applicationId: record.applicationId,
     fullName: record.fullName,
     universityRollNo: record.universityRollNo,
-    gender: record.gender,
-    year: record.year,
-    branch: record.branch,
-    whatsappNumber: record.whatsappNumber,
-    email: record.email,
-    primaryDomain: record.primaryDomain,
-    secondaryDomain: record.secondaryDomain,
     roleApplied: record.roleApplied,
-    pastExperience: record.pastExperience,
-    portfolioUrl: record.portfolioUrl,
-    motivation: record.motivation,
-    wasInPreviousEnigma: record.wasInPreviousEnigma,
-    previousRoleDetails: record.previousRoleDetails,
+    primaryDomain: record.primaryDomain,
     status: record.status,
+    whatsappNumber: record.whatsappNumber,
     interviewDetails: record.interviewDetails
       ? {
           date: record.interviewDetails.date ?? undefined,
@@ -36,7 +25,6 @@ function toPublicStatusRegistration(record: RegistrationRecord) {
           venue: record.interviewDetails.venue ?? undefined,
         }
       : null,
-    submittedAt: record.submittedAt,
   };
 }
 
