@@ -9,3 +9,19 @@
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
+  # Keep pg external so the Netlify Node runtime resolves its optional deps correctly.
+  external_node_modules = ["pg", "bcryptjs"]
+
+# Local `netlify dev`: Vite on 5173, Functions + proxy on 8888.
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  framework = "vite"
+  autoLaunch = false
+
+# SPA fallback — Netlify still serves /.netlify/functions/* before this rule.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

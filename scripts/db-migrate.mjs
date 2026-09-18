@@ -2,7 +2,7 @@
  * Minimal PostgreSQL migration runner.
  * Usage: npm run db:migrate
  *
- * - Reads DATABASE_URL from the environment (optionally from a local .env file)
+ * - Loads DATABASE_URL + DATABASE_SSL (and other keys) from .env when unset
  * - Applies db/migrations/*.sql in sorted order
  * - Tracks applied files in schema_migrations
  * - Never prints DATABASE_URL or credentials
@@ -10,60 +10,10 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { ROOT, buildPoolConfig, loadEnvFile } from './loadEnv.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
 const MIGRATIONS_DIR = path.join(ROOT, 'db', 'migrations');
-
-function loadDatabaseUrlFromEnvFile() {
-  if (process.env.DATABASE_URL?.trim()) return;
-
-  const envPath = path.join(ROOT, '.env');
-  if (!fs.existsSync(envPath)) return;
-
-  const text = fs.readFileSync(envPath, 'utf8');
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const match = trimmed.match(/^DATABASE_URL\s*=\s*(.*)$/);
-    if (!match) continue;
-    let value = match[1].trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (value) {
-      process.env.DATABASE_URL = value;
-    }
-    break;
-  }
-}
-
-function buildPoolConfig(connectionString) {
-  const sslMode = (process.env.DATABASE_SSL || '').trim().toLowerCase();
-  const isLocal =
-    sslMode === 'disable' ||
-    /localhost|127\.0\.0\.1/i.test(connectionString);
-
-  /** Explicit opt-in only — never the default. */
-  const allowNoVerify = sslMode === 'no-verify';
-
-  return {
-    connectionString,
-    max: 1,
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 10_000,
-    ...(isLocal
-      ? {}
-      : allowNoVerify
-        ? { ssl: { rejectUnauthorized: false } }
-        : { ssl: { rejectUnauthorized: true } }),
-  };
-}
 
 function listMigrationFiles() {
   if (!fs.existsSync(MIGRATIONS_DIR)) {
@@ -106,7 +56,7 @@ async function applyMigration(client, fileName) {
 }
 
 async function main() {
-  loadDatabaseUrlFromEnvFile();
+  loadEnvFile();
 
   const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {

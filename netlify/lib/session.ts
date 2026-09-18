@@ -22,12 +22,24 @@ export function sessionExpiryDate(from: Date = new Date()): Date {
 }
 
 function shouldUseSecureCookie(): boolean {
-  // Prefer Secure on Netlify/production; allow override for local HTTP tooling.
+  // Prefer Secure on real Netlify HTTPS deploys; allow override for local HTTP.
   if (process.env.ADMIN_COOKIE_SECURE === 'false') return false;
   if (process.env.ADMIN_COOKIE_SECURE === 'true') return true;
+
+  // `netlify dev` sets NETLIFY=true but serves over HTTP — Secure cookies break login.
+  if (
+    process.env.CONTEXT === 'dev' ||
+    process.env.NETLIFY_DEV === 'true' ||
+    process.env.NETLIFY_DEV === '1'
+  ) {
+    return false;
+  }
+
   return (
     process.env.NODE_ENV === 'production' ||
     process.env.CONTEXT === 'production' ||
+    process.env.CONTEXT === 'deploy-preview' ||
+    process.env.CONTEXT === 'branch-deploy' ||
     process.env.NETLIFY === 'true'
   );
 }

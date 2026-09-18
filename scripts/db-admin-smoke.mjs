@@ -4,53 +4,10 @@
  * Never prints secrets or DATABASE_URL.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-
-function loadEnvFile() {
-  const envPath = path.join(ROOT, '.env');
-  if (!fs.existsSync(envPath)) return;
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (!(key in process.env) || !process.env[key]) {
-      process.env[key] = value;
-    }
-  }
-}
-
-function buildPoolConfig(connectionString) {
-  const sslMode = (process.env.DATABASE_SSL || '').trim().toLowerCase();
-  const isLocal =
-    sslMode === 'disable' || /localhost|127\.0\.0\.1/i.test(connectionString);
-  const allowNoVerify = sslMode === 'no-verify';
-  return {
-    connectionString,
-    max: 1,
-    ...(isLocal
-      ? {}
-      : allowNoVerify
-        ? { ssl: { rejectUnauthorized: false } }
-        : { ssl: { rejectUnauthorized: true } }),
-  };
-}
+import { buildPoolConfig, loadEnvFile } from './loadEnv.mjs';
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

@@ -7,66 +7,15 @@
  * Cleans up rows it creates (SMOKE-TEST-* roll numbers).
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-
-function loadDatabaseUrlFromEnvFile() {
-  if (process.env.DATABASE_URL?.trim()) return;
-
-  const envPath = path.join(ROOT, '.env');
-  if (!fs.existsSync(envPath)) return;
-
-  const text = fs.readFileSync(envPath, 'utf8');
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const match = trimmed.match(/^DATABASE_URL\s*=\s*(.*)$/);
-    if (!match) continue;
-    let value = match[1].trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (value) process.env.DATABASE_URL = value;
-    break;
-  }
-}
-
-function buildPoolConfig(connectionString) {
-  const sslMode = (process.env.DATABASE_SSL || '').trim().toLowerCase();
-  const isLocal =
-    sslMode === 'disable' ||
-    /localhost|127\.0\.0\.1/i.test(connectionString);
-
-  /** Explicit opt-in only — never the default. */
-  const allowNoVerify = sslMode === 'no-verify';
-
-  return {
-    connectionString,
-    max: 1,
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 10_000,
-    ...(isLocal
-      ? {}
-      : allowNoVerify
-        ? { ssl: { rejectUnauthorized: false } }
-        : { ssl: { rejectUnauthorized: true } }),
-  };
-}
+import { buildPoolConfig, loadEnvFile } from './loadEnv.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 async function main() {
-  loadDatabaseUrlFromEnvFile();
+  loadEnvFile();
   const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {
     console.error('db:smoke failed: DATABASE_URL is not set.');
