@@ -1,11 +1,12 @@
 import type { Handler, HandlerResponse } from '@netlify/functions';
 import { revokeAdminSession } from '../lib/adminAuth';
-import { AppError, toPublicErrorResponse } from '../lib/errors';
-import { extractBearerToken, jsonResponse, parseJsonBody } from '../lib/http';
+import { toPublicErrorResponse } from '../lib/errors';
+import { extractSessionToken, jsonResponse } from '../lib/http';
+import { buildClearAdminSessionCookie } from '../lib/session';
 
 /**
  * POST /.netlify/functions/admin-logout
- * Revokes the current session (Authorization: Bearer <token> or JSON { token }).
+ * Revokes the session and clears the HttpOnly cookie.
  */
 export const handler: Handler = async (event): Promise<HandlerResponse> => {
   if (event.httpMethod !== 'POST') {
@@ -15,26 +16,20 @@ export const handler: Handler = async (event): Promise<HandlerResponse> => {
   }
 
   try {
-    let token = extractBearerToken(event);
-
-    if (!token && event.body) {
-      const body = parseJsonBody(event);
-      if (body && typeof body === 'object' && !Array.isArray(body)) {
-        const maybe = (body as Record<string, unknown>).token;
-        if (typeof maybe === 'string' && maybe.trim()) {
-          token = maybe.trim();
-        }
-      }
+    const token = extractSessionToken(event);
+    if (token) {
+      await revokeAdminSession(token);
     }
 
-    if (!token) {
-      throw new AppError('UNAUTHORIZED', 'Authentication required.', 401);
-    }
-
-    await revokeAdminSession(token);
-    return jsonResponse(200, { ok: true });
+    return jsonResponse(
+      200,
+      { ok: true },
+      { 'Set-Cookie': buildClearAdminSessionCookie() }
+    );
   } catch (err) {
     const { statusCode, body } = toPublicErrorResponse(err);
-    return jsonResponse(statusCode, body);
+    return jsonResponse(statusCode, body, {
+      'Set-Cookie': buildClearAdminSessionCookie(),
+    });
   }
 };

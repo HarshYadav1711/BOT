@@ -2,12 +2,11 @@ import type { Handler, HandlerResponse } from '@netlify/functions';
 import { authenticateAdmin } from '../lib/adminAuth';
 import { toPublicErrorResponse } from '../lib/errors';
 import { jsonResponse, parseJsonBody } from '../lib/http';
+import { buildAdminSessionCookie } from '../lib/session';
 
 /**
  * POST /.netlify/functions/admin-login
- *
- * Authenticates with username/password, bootstraps initial admin from env if needed,
- * and returns an opaque session token (DB stores only the token hash).
+ * Sets an HttpOnly session cookie and returns non-sensitive session metadata.
  * Frontend is not wired to this endpoint yet.
  */
 export const handler: Handler = async (event): Promise<HandlerResponse> => {
@@ -27,13 +26,19 @@ export const handler: Handler = async (event): Promise<HandlerResponse> => {
 
     const { username, password } = body as Record<string, unknown>;
     const result = await authenticateAdmin(username, password);
+    const expiresAt = new Date(result.expiresAt);
 
-    return jsonResponse(200, {
-      ok: true,
-      token: result.token,
-      expiresAt: result.expiresAt,
-      username: result.username,
-    });
+    return jsonResponse(
+      200,
+      {
+        ok: true,
+        expiresAt: result.expiresAt,
+        username: result.username,
+      },
+      {
+        'Set-Cookie': buildAdminSessionCookie(result.token, expiresAt),
+      }
+    );
   } catch (err) {
     const { statusCode, body } = toPublicErrorResponse(err);
     return jsonResponse(statusCode, body);

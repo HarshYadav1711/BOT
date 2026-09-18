@@ -298,7 +298,7 @@ export async function updateRegistrationStatus(
     UPDATE registrations
     SET
       status = $2,
-      admin_remarks = COALESCE($3, admin_remarks),
+      admin_remarks = CASE WHEN $3::text IS NULL THEN admin_remarks ELSE $3 END,
       updated_at = NOW()
     WHERE UPPER(application_id) = UPPER($1)
     RETURNING ${SELECT_COLUMNS}
@@ -327,7 +327,7 @@ export async function updateInterviewDetails(
       interview_notes = COALESCE($5, interview_notes),
       interview_score = COALESCE($6, interview_score),
       interview_scheduled_at = COALESCE($7::timestamptz, interview_scheduled_at, NOW()),
-      admin_remarks = COALESCE($8, admin_remarks),
+      admin_remarks = CASE WHEN $8::text IS NULL THEN admin_remarks ELSE $8 END,
       updated_at = NOW()
     WHERE UPPER(application_id) = UPPER($1)
     RETURNING ${SELECT_COLUMNS}
@@ -346,4 +346,15 @@ export async function updateInterviewDetails(
 
   const row = result.rows[0];
   return row ? mapRow(row) : null;
+}
+
+export async function deleteRegistration(applicationId: string): Promise<boolean> {
+  const result = await query(
+    `
+    DELETE FROM registrations
+    WHERE UPPER(application_id) = UPPER($1)
+    `,
+    [applicationId.trim()]
+  );
+  return (result.rowCount ?? 0) > 0;
 }
