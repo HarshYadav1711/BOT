@@ -27,7 +27,7 @@ export const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md transition-all animate-fadeIn">
       <div 
-        className="relative max-w-xl w-full bg-[#0d1322] border-2 border-emerald-500/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="RegistrationSlipModal relative max-w-xl w-full bg-[#0d1322] border-2 border-emerald-500/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Confetti & Success Banner */}
