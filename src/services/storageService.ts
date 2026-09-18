@@ -144,6 +144,42 @@ function escapeCsv(val: unknown): string {
   return `"${str}"`;
 }
 
+/** Normalize university roll numbers for duplicate comparison (trim + case-insensitive). */
+function normalizeRollNo(roll: string): string {
+  return roll.trim().toUpperCase();
+}
+
+const MAX_APPLICATION_ID_ATTEMPTS = 64;
+
+/**
+ * Generate an unused application ID in the existing format:
+ * ENIGMA-2025-V#### / ENIGMA-2025-H####
+ */
+function generateUniqueApplicationId(
+  year: '2nd Year' | '3rd Year',
+  existingIds: ReadonlySet<string>
+): string {
+  const prefix = year === '2nd Year' ? 'V' : 'H';
+
+  for (let attempt = 0; attempt < MAX_APPLICATION_ID_ATTEMPTS; attempt++) {
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const id = `ENIGMA-2025-${prefix}${randomNum}`;
+    if (!existingIds.has(id)) {
+      return id;
+    }
+  }
+
+  throw new Error('Unable to generate a unique application ID. Please try again.');
+}
+
+/** Controlled duplicate-registration failure from storage (source of truth). */
+export class DuplicateRegistrationError extends Error {
+  constructor(message = 'A registration already exists for this university roll number.') {
+    super(message);
+    this.name = 'DuplicateRegistrationError';
+  }
+}
+
 export const storageService = {
   getRegistrations(): Applicant[] {
     try {
@@ -161,9 +197,17 @@ export const storageService = {
 
   saveRegistration(applicantData: Omit<Applicant, 'id' | 'status' | 'submittedAt'>): Applicant {
     const list = this.getRegistrations();
-    const prefix = applicantData.year === '2nd Year' ? 'V' : 'H';
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const id = `ENIGMA-2025-${prefix}${randomNum}`;
+    const normalizedRoll = normalizeRollNo(applicantData.universityRollNo);
+
+    const alreadyRegistered = list.some(
+      (a) => normalizeRollNo(a.universityRollNo) === normalizedRoll
+    );
+    if (alreadyRegistered) {
+      throw new DuplicateRegistrationError();
+    }
+
+    const existingIds = new Set(list.map((a) => a.id));
+    const id = generateUniqueApplicationId(applicantData.year, existingIds);
 
     const newApplicant: Applicant = {
       ...applicantData,

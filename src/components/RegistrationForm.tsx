@@ -16,7 +16,7 @@ import type {
   Applicant 
 } from '../types/registration';
 import { DOMAINS_DATA, BRANCH_LIST } from '../data/culturalCellData';
-import { storageService } from '../services/storageService';
+import { DuplicateRegistrationError, storageService } from '../services/storageService';
 
 interface RegistrationFormProps {
   selectedYear: YearType;
@@ -144,6 +144,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
       onRegistrationSuccess(applicant);
     } catch (err) {
+      if (err instanceof DuplicateRegistrationError) {
+        setErrors({ universityRollNo: err.message });
+        return;
+      }
       console.error(err);
       alert('An error occurred while saving your registration. Please try again.');
     } finally {
