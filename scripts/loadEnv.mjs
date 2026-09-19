@@ -42,12 +42,39 @@ export function loadEnvFile(envFileName = '.env') {
   }
 }
 
+/** pg URL keys that can replace an explicit Pool `ssl` object. */
+const PG_SSL_QUERY_PARAMS = ['sslmode', 'sslcert', 'sslkey', 'sslrootcert'];
+
 /**
- * Shared pg Pool SSL config.
+ * Remove only pg SSL query params so an explicit `ssl` config is not overridden.
+ * Never logs the URL. On parse failure, returns the original string unchanged.
+ * Kept in sync with netlify/lib/db.ts.
+ */
+export function stripPgSslQueryParams(connectionString) {
+  try {
+    const url = new URL(connectionString);
+    let changed = false;
+    for (const key of PG_SSL_QUERY_PARAMS) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    }
+    return changed ? url.toString() : connectionString;
+  } catch {
+    return connectionString;
+  }
+}
+
+/**
+ * Shared pg Pool SSL config (kept in sync with netlify/lib/db.ts).
  * DATABASE_SSL:
  *   unset / default → verify certificates (recommended for production)
  *   disable         → no TLS (local Postgres only)
  *   no-verify       → TLS without cert verification (explicit opt-in)
+ *
+ * When an explicit `ssl` object is set, URL SSL query params are stripped so
+ * node-postgres cannot replace that object.
  */
 export function buildPoolConfig(connectionString) {
   const sslMode = (process.env.DATABASE_SSL || '').trim().toLowerCase();
@@ -56,16 +83,25 @@ export function buildPoolConfig(connectionString) {
     /localhost|127\.0\.0\.1/i.test(connectionString);
   const allowNoVerify = sslMode === 'no-verify';
 
+  if (isLocal) {
+    return {
+      connectionString,
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+    };
+  }
+
+  const sanitizedConnectionString = stripPgSslQueryParams(connectionString);
+
   return {
-    connectionString,
+    connectionString: sanitizedConnectionString,
     max: 1,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 10_000,
-    ...(isLocal
-      ? {}
-      : allowNoVerify
-        ? { ssl: { rejectUnauthorized: false } }
-        : { ssl: { rejectUnauthorized: true } }),
+    ...(allowNoVerify
+      ? { ssl: { rejectUnauthorized: false } }
+      : { ssl: { rejectUnauthorized: true } }),
   };
 }
 

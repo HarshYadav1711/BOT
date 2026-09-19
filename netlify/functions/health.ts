@@ -1,6 +1,8 @@
 import type { Handler, HandlerResponse } from '@netlify/functions';
-import { checkDatabaseConnectivity } from '../lib/db';
-import { isAppError } from '../lib/errors';
+import {
+  buildHealthFailureDiagnostics,
+  checkDatabaseConnectivity,
+} from '../lib/db';
 
 const JSON_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -10,7 +12,8 @@ const JSON_HEADERS: Record<string, string> = {
 /**
  * GET /.netlify/functions/health
  * Verifies process health and optional database connectivity.
- * Never exposes connection details, stack traces, or environment values.
+ * Never exposes connection details, stack traces, or environment values
+ * in the HTTP response. Safe diagnostics go to function logs only.
  */
 export const handler: Handler = async (event): Promise<HandlerResponse> => {
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'HEAD') {
@@ -29,9 +32,11 @@ export const handler: Handler = async (event): Promise<HandlerResponse> => {
       body: JSON.stringify({ ok: true }),
     };
   } catch (err) {
-    if (!isAppError(err)) {
-      console.error('[health] connectivity check failed');
-    }
+    // Private Netlify function logs only — never echo into the HTTP body.
+    console.error(
+      '[health] connectivity check failed',
+      buildHealthFailureDiagnostics(err)
+    );
 
     return {
       statusCode: 500,
